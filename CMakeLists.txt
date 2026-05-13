@@ -2,8 +2,8 @@ cmake_minimum_required (VERSION 3.20)
 project (${APP_NAME})
 set(CMAKE_CXX_STANDARD 23)
 
-set(SOURCES src/main.cpp)
-set(HEADERS)
+set(SOURCES src/main.cpp src/game.cpp src/utils.cpp)
+set(HEADERS lib/game.h lib/utils.h)
 
 add_executable(${APP_NAME} ${SOURCES} ${HEADER_FILES})
 target_include_directories(${APP_NAME} PRIVATE lib)
