@@ -1,12 +1,11 @@
 #pragma once
-#include "utils.h"
 #include <string>
 #include <vector>
 
 enum State { Fresh, Spent };
 
 struct Platoon {
-    int number;
+    int number; // if number == 0; is enemy
     bool deployed;
     State state;
 
@@ -27,6 +26,7 @@ class Game {
 
     Platoon** get(int q, int r);
     void set(int q, int r, int n);
+    void step();
 
     Game();
     ~Game();
