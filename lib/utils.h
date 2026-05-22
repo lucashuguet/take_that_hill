@@ -6,10 +6,10 @@
 const int PLATOONS_PER_HEX = 3;
 
 const int GRID_Q = 3;
-const int GRID_COLS = GRID_Q * 7 + 2;
+const int GRID_COLS = GRID_Q * 7 + 2; // col size in characters
 
 const int GRID_R = 5;
-const int GRID_ROWS = GRID_R * 4 + 3;
+const int GRID_ROWS = GRID_R * 4 + 3; // row size in characters
 
 const int BOARD_SIZE = GRID_Q * GRID_R;
 
@@ -26,8 +26,13 @@ void stamp(std::string& grid, const std::vector<std::string>& lines, int row, in
 
 std::string ask(std::string t);
 std::optional<int> ask_choice(const std::string&, const std::vector<int>& choices);
+
 bool is_valid_dir(char c);
 bool has(const std::string& s, char c);
 std::pair<int, int> ask_move(int parity);
 
 std::string join(std::vector<int> v, char sep);
+
+double distance(int q1, int r1, int q2, int r2);
+
+int roll_dice(int sides = 6);

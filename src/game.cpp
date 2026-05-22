@@ -12,7 +12,7 @@ void Game::display() {
     std::string hexgrid;
     hexgrid.reserve(GRID_ROWS * (GRID_COLS + 1));
     for (int i = 0; i < GRID_ROWS -1; i++)
-        hexgrid += std::string(GRID_COLS, ' ') + '\n';
+        hexgrid += std::string(GRID_COLS, ' ') + "\n";
 
     for (int i = 0; i < BOARD_SIZE; i++) {
         int q = hex_q(i);
@@ -29,7 +29,7 @@ void Game::display() {
     hexgrid.erase(hexgrid.find_last_not_of(" \n\r\t") +1); // trim
 
     std::string border = std::string(GRID_COLS, '-');
-    std::cout << border << '\n' << hexgrid << '\n' << border << '\n';
+    std::cout << border << "\n" << "Turn " << turns << "\n" << hexgrid << "\n\n";
 }
 
 Platoon** Game::get(int q, int r) {
@@ -50,13 +50,16 @@ void Game::set(int q, int r, int n) {
 
     platoons[n].q = q;
     platoons[n].r = r;
+    platoons[n].platoon.state = Spent;
 
     board[hex_index(q, r)][n] = &platoons[n].platoon;
 }
 
-void Game::step() {
-    // Movement
+int Game::step() {
+    PlatoonData p_eny = platoons[0];
 
+    // Movement
+    std::cout << "--------MOVEMENT-------\n";
     std::vector<int> undeployed, fresh;
     for (int i = 1; i <= PLATOONS_PER_HEX; i++) {
         auto& p = platoons[i].platoon;
@@ -64,30 +67,72 @@ void Game::step() {
         else if (p.state == Fresh) fresh.push_back(i);
     }
 
-    if (!undeployed.empty()) {
+    while (!undeployed.empty()) {
         if (auto i = ask_choice("deploy a platoon?", undeployed)) {
             // iota generate a vector<int> range from 1 to GRID_Q
             int q = ask_choice("which column?", std::views::iota(1, GRID_Q + 1) | std::ranges::to<std::vector>()).value_or((GRID_Q +1) /2) -1;
             int r = q % 2 == 0 ? 3 : 4;
             set(q, r, *i);
-        }
+            std::erase(undeployed, *i);
+        } else break;
     }
 
-    if (!fresh.empty()) {
+    while (!fresh.empty()) {
         if (auto i = ask_choice("move a platoon?", fresh)) {
             auto [dx, dy] = ask_move(platoons[*i].q % 2);
             int q = platoons[*i].q + dx;
             int r = platoons[*i].r + dy;
             set(q, r, *i);
-        }
+            std::erase(fresh, *i);
+        } else break;
     }
 
     // Firing
+    std::cout << "---------FIRING--------\n";
+    while (!fresh.empty()) {
+        if (auto i = ask_choice("open fire?", fresh)) {
+            PlatoonData& p_data = platoons[*i];
+            int dice = roll_dice();
+
+            double d = distance(p_data.q, p_data.r, p_eny.q, p_eny.r);
+
+            if ((double)dice > d) {
+                std::cout << std::format("  rolled a {} > {}", dice, d) << "\n";
+                std::cout << "  enemy hit, suppressed for this turn\n";
+                p_eny.platoon.state = Spent;
+            } else {
+                std::cout << std::format("  rolled a {} !> {}", dice, d) << "\n";
+                std::cout << "  you missed\n";
+            }
+
+            p_data.platoon.state = Spent;
+            std::erase(fresh, *i);
+        } else break;
+    }
+
     // Rally
+    std::cout << "---------RALLY---------\n";
+    PlatoonData& p_a1 = platoons[1];
+    for (int i = 1; i <= PLATOONS_PER_HEX; i++) {
+        PlatoonData& p = platoons[i];
+        int d = distance(p.q, p.r, p_a1.q, p_a1.r);
+        int dice = roll_dice();
+        if (d == 0 || dice > d) {
+            p.platoon.state = Fresh;
+            std::cout << std::format("  A{} has recovered ({} > {})", i, dice, d) << "\n";
+        }
+    }
+
     // Enemy Action
+    std::cout << "------ENEMY ACTION-----\n";
+    p_eny.platoon.state = Fresh;
+
+    turns += 1;
+    if (turns > 15) return turns;
+    else return 0;
 }
 
-Game::Game() : turns(0) {
+Game::Game() : turns(1) {
     platoons = new PlatoonData[PLATOONS_PER_HEX +1]; // 3 friendly + 1 enemy
     for (int i = 0; i < PLATOONS_PER_HEX +1; i++)
         platoons[i] = PlatoonData(i);

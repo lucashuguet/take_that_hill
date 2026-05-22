@@ -1,7 +1,10 @@
 #include "utils.h"
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <optional>
+#include <random>
 
 bool is_valid(int q, int r) {
     return q >= 0 && q < GRID_Q && r >= 0 && r < GRID_R;
@@ -102,4 +105,14 @@ std::string join(std::vector<int> v, char sep) {
     }
 
     return out.substr(0, out.size() -1); // remove the last sep
+}
+
+double distance(int q1, int r1, int q2, int r2) {
+    return (double)(std::abs(q1 - q2) + std::abs(q1 + r1 - q2 - r2) + std::abs(r1 - r2)) / 2;
+}
+
+int roll_dice(int sides) {
+    static std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> dist(1, sides);
+    return dist(rng);
 }

@@ -26,7 +26,7 @@ class Game {
 
     Platoon** get(int q, int r);
     void set(int q, int r, int n);
-    void step();
+    int step();
 
     Game();
     ~Game();
