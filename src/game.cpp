@@ -29,7 +29,7 @@ void Game::display() {
     hexgrid.erase(hexgrid.find_last_not_of(" \n\r\t") +1); // trim
 
     std::string border = std::string(GRID_COLS, '-');
-    std::cout << border << "\n" << "Turn " << turns << "\n" << hexgrid << "\n\n";
+    std::cout << border << "\n" << std::format("Turn {} | Score {}\n", turns, turns + hits) << hexgrid << "\n\n";
 }
 
 Platoon** Game::get(int q, int r) {
@@ -56,7 +56,7 @@ void Game::set(int q, int r, int n) {
 }
 
 int Game::step() {
-    PlatoonData p_eny = platoons[0];
+    PlatoonData& p_eny = platoons[0];
 
     // Movement
     std::cout << "--------MOVEMENT-------\n";
@@ -83,6 +83,12 @@ int Game::step() {
             int q = platoons[*i].q + dx;
             int r = platoons[*i].r + dy;
             set(q, r, *i);
+
+            // win condition
+            if (q == p_eny.q && r == p_eny.r) {
+                return turns + hits;
+            }
+
             std::erase(fresh, *i);
         } else break;
     }
@@ -125,14 +131,89 @@ int Game::step() {
 
     // Enemy Action
     std::cout << "------ENEMY ACTION-----\n";
+    if (p_eny.platoon.state == Fresh) {
+        std::vector<std::pair<int, int>> occupied_hexes;
+        for (int i = 1; i <= PLATOONS_PER_HEX; i++) {
+            if (platoons[i].platoon.deployed) {
+                bool exists = false;
+                for (auto& h : occupied_hexes) {
+                    if (h.first == platoons[i].q && h.second == platoons[i].r) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) occupied_hexes.push_back({platoons[i].q, platoons[i].r});
+            }
+        }
+
+        if (occupied_hexes.empty()) {
+            std::cout << "  no targets available.\n";
+        } else {
+            int primary_idx = -1;
+            double min_dist_pri = 1e9;
+            for (int i = 0; i < occupied_hexes.size(); i++) {
+                double d = distance(p_eny.q, p_eny.r, occupied_hexes[i].first, occupied_hexes[i].second);
+                if (d < min_dist_pri) {
+                    min_dist_pri = d;
+                    primary_idx = i;
+                }
+            }
+            auto primary = occupied_hexes[primary_idx];
+            std::cout << std::format("  enemy targets primary hex ({}, {}) at dist {:.1f}\n", primary.first, primary.second, min_dist_pri);
+
+            std::optional<std::pair<int, int>> secondary;
+            if (occupied_hexes.size() > 1) {
+                double min_dist_sec = 1e9;
+                std::vector<int> candidates;
+                for (int i = 0; i < occupied_hexes.size(); i++) {
+                    if (i == primary_idx) continue;
+                    double d = distance(primary.first, primary.second, occupied_hexes[i].first, occupied_hexes[i].second);
+                    if (d < min_dist_sec) {
+                        min_dist_sec = d;
+                        candidates = {i};
+                    } else if (d == min_dist_sec) {
+                        candidates.push_back(i);
+                    }
+                }
+
+                int max_platoons = -1;
+                std::vector<int> best_candidates;
+                for (int idx : candidates) {
+                    int count = 0;
+                    for (int p = 1; p <= PLATOONS_PER_HEX; p++) {
+                        if (platoons[p].platoon.deployed && platoons[p].q == occupied_hexes[idx].first && platoons[p].r == occupied_hexes[idx].second) {
+                            count++;
+                        }
+                    }
+                    if (count > max_platoons) {
+                        max_platoons = count;
+                        best_candidates = {idx};
+                    } else if (count == max_platoons) {
+                        best_candidates.push_back(idx);
+                    }
+                }
+                secondary = occupied_hexes[best_candidates[roll_dice(best_candidates.size()) - 1]];
+                double d_eny_sec = distance(p_eny.q, p_eny.r, secondary->first, secondary->second);
+                std::cout << std::format("  enemy targets secondary hex ({}, {}) at dist {:.1f}\n", secondary->first, secondary->second, d_eny_sec);
+            }
+
+            resolve_combat(primary.first, primary.second);
+            if (secondary) {
+                resolve_combat(secondary->first, secondary->second);
+            }
+        }
+    }
+
     p_eny.platoon.state = Fresh;
 
     turns += 1;
-    if (turns > 15) return turns;
+    int final_score = turns + hits;
+    if (final_score > 16) return final_score;
+
     else return 0;
 }
 
-Game::Game() : turns(1) {
+Game::Game() : turns(1), hits(0) {
     platoons = new PlatoonData[PLATOONS_PER_HEX +1]; // 3 friendly + 1 enemy
     for (int i = 0; i < PLATOONS_PER_HEX +1; i++)
         platoons[i] = PlatoonData(i);
@@ -143,6 +224,7 @@ Game::Game() : turns(1) {
 
     // place the ennemy at the top of the hill
     set(1, 0, 0);
+    platoons[0].platoon.state = Fresh;
 }
 
 Game::~Game() {
@@ -160,12 +242,17 @@ std::vector<std::string> Game::render_hex(int i) {
     for (int j = 0; j < PLATOONS_PER_HEX + 1; j++) {
         if (board[i][j] == nullptr) continue;
         if (board[i][j]->number == 0)
-            present.push_back("ENI");
-        else
-            present.push_back("A-" + std::to_string(board[i][j]->number));
+            present.push_back(" ENI ");
+        else {
+            char a = ' ', b = ' ';
+            if (board[i][j]->state == Spent)
+                a = '[', b = ']';
+            present.push_back(std::format("{}A-{}{}", a, board[i][j]->number, b));
+        }
     }
 
-    std::string l[] = {"   ", "   ", "   "};
+
+    std::string l[] = {"     ", "     ", "     "};
     int count = present.size();
     if (count == 1) l[1] = present[0];
     else if (count == 2) { l[1] = present[0]; l[2] = present[1]; }
@@ -173,9 +260,25 @@ std::vector<std::string> Game::render_hex(int i) {
 
     return {
         "  _____  ",
-        " / " + l[0] + " \\ ",
-        "/  " + l[1] + "  \\",
-        "\\  " + l[2] + "  /",
+        " /" + l[0] + "\\ ",
+        "/ " + l[1] + " \\",
+        "\\ " + l[2] + " /",
         " \\_____/ "
     };
+}
+
+void Game::resolve_combat(int q, int r) {
+    for (int p = 1; p <= PLATOONS_PER_HEX; p++) {
+        if (platoons[p].platoon.deployed && platoons[p].q == q && platoons[p].r == r) {
+            int roll = roll_dice();
+            double d_hill = distance(platoons[p].q, platoons[p].r, 1, 0);
+            if (roll >= d_hill) {
+                platoons[p].platoon.state = Spent;
+                hits++;
+                std::cout << std::format("    A{} hit! ({} >= {:.1f})\n", p, roll, d_hill);
+            } else {
+                std::cout << std::format("    A{} survived ({} < {:.1f})\n", p, roll, d_hill);
+            }
+        }
+    }
 }

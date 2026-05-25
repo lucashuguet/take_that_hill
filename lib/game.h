@@ -33,8 +33,10 @@ class Game {
 
  private:
     int turns;
+    int hits;
     PlatoonData* platoons;
     Platoon*** board;
 
     std::vector<std::string> render_hex(int i);
+    void resolve_combat(int q, int r);
 };
