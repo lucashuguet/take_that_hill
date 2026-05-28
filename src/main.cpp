@@ -1,8 +1,15 @@
 #include <game.h>
 #include <iostream>
 
-int main() {
+int main(int argc, char** argv) {
     Game game;
+
+    if (argc > 1) {
+        if (!game.load(argv[1])) {
+            std::cerr << "failed to load game state from " << argv[1] << "\n";
+            return 1;
+        }
+    }
 
     int s;
     do {

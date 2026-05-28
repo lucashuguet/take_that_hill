@@ -3,6 +3,8 @@
 #include <string>
 #include <iostream>
 #include <ranges>
+#include <fstream>
+#include <sstream>
 
 Platoon::Platoon(int n) : number(n), deployed(false), state(Fresh) {};
 
@@ -282,4 +284,78 @@ void Game::resolve_combat(int q, int r) {
             }
         }
     }
+}
+
+bool Game::load(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "error: could not open file " << filename << "\n";
+        return false;
+    }
+
+    std::string line;
+    try {
+        while (std::getline(file, line)) {
+            if (line.empty()) continue;
+            // remove comments if they exist
+            size_t comment_pos = line.find('#');
+            if (comment_pos != std::string::npos) {
+                line = line.substr(0, comment_pos);
+            }
+
+            // trim trailing spaces
+            while (!line.empty() && std::isspace(line.back())) line.pop_back();
+            if (line.empty()) continue;
+
+            size_t colon_pos = line.find(':');
+            if (colon_pos == std::string::npos) continue;
+
+            std::string key = line.substr(0, colon_pos);
+            std::string value = line.substr(colon_pos + 1);
+
+            if (key == "turns") {
+                turns = std::stoi(value);
+            } else if (key == "hits") {
+                hits = std::stoi(value);
+            } else if (key.size() == 2 && key[0] == 'A') {
+                int n = key[1] - '0';
+                if (n < 1 || n > PLATOONS_PER_HEX) continue;
+
+                std::stringstream ss(value);
+                std::string part;
+                std::vector<std::string> parts;
+                while (std::getline(ss, part, ',')) {
+                    parts.push_back(part);
+                }
+
+                if (parts.size() < 3) continue;
+
+                int q = std::stoi(parts[0]);
+                int r = std::stoi(parts[1]);
+                char state_char = parts[2][0];
+
+                if (!is_valid(q, r)) continue;
+
+                // clear existing position on board
+                for (int i = 0; i < BOARD_SIZE; i++) {
+                    for (int j = 0; j < PLATOONS_PER_HEX + 1; j++) {
+                        if (board[i][j] && board[i][j]->number == n) {
+                            board[i][j] = nullptr;
+                        }
+                    }
+                }
+
+                platoons[n].q = q;
+                platoons[n].r = r;
+                platoons[n].platoon.deployed = true;
+                platoons[n].platoon.state = (state_char == 'F') ? Fresh : Spent;
+                board[hex_index(q, r)][n] = &platoons[n].platoon;
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "error parsing state file: " << e.what() << "\n";
+        return false;
+    }
+
+    return true;
 }

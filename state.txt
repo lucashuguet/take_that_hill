@@ -1,0 +1,5 @@
+turns:2
+hits:1
+A1:1,4,F  # platoon A1, position (line, column) - (0,1), F|S : fresh or spent
+A2:0,3,S
+A3:2,3,F

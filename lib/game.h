@@ -26,6 +26,7 @@ class Game {
 
     Platoon** get(int q, int r);
     void set(int q, int r, int n);
+    bool load(const std::string& filename);
     int step();
 
     Game();
