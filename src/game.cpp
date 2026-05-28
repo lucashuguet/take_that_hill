@@ -56,6 +56,9 @@ void Game::set(int q, int r, int n) {
 }
 
 int Game::step() {
+    int final_score = turns + hits;
+    if (final_score > 15) return final_score;
+
     PlatoonData& p_eny = platoons[0];
 
     // Movement
@@ -126,7 +129,8 @@ int Game::step() {
         if (d == 0 || dice > d) {
             p.platoon.state = Fresh;
             std::cout << std::format("  A{} has recovered ({} > {})", i, dice, d) << "\n";
-        }
+        } else
+            std::cout << std::format("  A{} remain spent ({} <= {})", i, dice, d) << "\n";
     }
 
     // Enemy Action
@@ -207,10 +211,7 @@ int Game::step() {
     p_eny.platoon.state = Fresh;
 
     turns += 1;
-    int final_score = turns + hits;
-    if (final_score > 16) return final_score;
-
-    else return 0;
+    return 0;
 }
 
 Game::Game() : turns(1), hits(0) {
