@@ -51,7 +51,7 @@ struct Game {
 The game uses a score calculated as: `score = turns + hits`.
 - **Victory**: Friendly platoon reaches (1, 0) with `Score <= 10`.
 - **Draw**: Friendly platoon reaches (1, 0) with `11 <= Score <= 15`.
-- **Defeat**: `Score > 16` or the turn limit (15) is reached without victory.
+- **Defeat**: `Score >= 16` or the turn limit (15) is reached without victory.
 
 ## Project Structure
 
@@ -64,3 +64,8 @@ lib
  |- game.h // Game and Platoon definitions
  |- utils.h // Utility function declarations
 ```
+
+## Utilisation de l'IA
+L'IA a été assez peu utilisé sauf pour quelques fonction complexes comme `stamp` où l'IA (Claude) fut un réel avantage pour ne pas avoir à passer une éterniter à trouver et implémenter un algorithme, dans le fond peu intéressant.
+Ayant une idée très précise de ce que l'ont cherchait à atteindre avec l'IA, ses résultats étaient très satisfaisant.
+L'IA a aussi permis d'expliquer quelques concepts de c++.
